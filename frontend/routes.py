@@ -1,7 +1,7 @@
+import os
 from flask import Blueprint, render_template
 
 frontend_bp = Blueprint("frontend", __name__, template_folder="templates")
-
 
 @frontend_bp.route("/")
 @frontend_bp.route("/home")
@@ -12,4 +12,5 @@ frontend_bp = Blueprint("frontend", __name__, template_folder="templates")
 @frontend_bp.route("/appointments")
 @frontend_bp.route("/appointment/create")
 def index():
-    return render_template("dashboard.html")
+    api_base = os.environ.get("API_BASE", "")
+    return render_template("dashboard.html", api_base=api_base)
