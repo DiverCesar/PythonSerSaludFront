@@ -1,0 +1,3185 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+The content has been processed where security check has been disabled.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Security check has been disabled - content may contain sensitive information
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+api_delete_service/
+  __init__.py
+  routes.py
+api_get_service/
+  __init__.py
+  routes.py
+api_post_service/
+  __init__.py
+  routes.py
+api_put_service/
+  __init__.py
+  routes.py
+db_service/
+  __init__.py
+  database.py
+  models.py
+frontend/
+  static/
+    css/
+      styles.css
+    js/
+      app.js
+  templates/
+    dashboard.html
+  __init__.py
+  routes.py
+.gitignore
+app.py
+config.py
+LICENSE
+Procfile
+railway.json
+README.md
+repomix-output-DiverCesar-exam_u2_template.git.xml
+repomix-output-DiverCesar-PythonRESTful.git.xml
+requirements.txt
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api_delete_service/__init__.py">
+
+</file>
+
+<file path="api_delete_service/routes.py">
+from flask import Blueprint, jsonify
+from db_service.database import patients, doctors, appointments
+
+delete_bp = Blueprint("delete_service", __name__)
+
+
+@delete_bp.route("/api/ser-salud/patient/<int:patient_id>", methods=["DELETE"])
+def delete_patient(patient_id):
+    try:
+        result = patients.find_one_and_delete({"id": patient_id})
+        if not result:
+            return jsonify({"error": "Patient not found"}), 404
+        return jsonify({"message": "Patient deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@delete_bp.route("/api/ser-salud/doctor/<int:doctor_id>", methods=["DELETE"])
+def delete_doctor(doctor_id):
+    try:
+        result = doctors.find_one_and_delete({"id": doctor_id})
+        if not result:
+            return jsonify({"error": "Doctor not found"}), 404
+        return jsonify({"message": "Doctor deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@delete_bp.route("/api/ser-salud/appointment/<int:appointment_id>", methods=["DELETE"])
+def delete_appointment(appointment_id):
+    try:
+        result = appointments.find_one_and_delete({"id": appointment_id})
+        if not result:
+            return jsonify({"error": "Appointment not found"}), 404
+        return jsonify({"message": "Appointment deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+</file>
+
+<file path="api_get_service/__init__.py">
+
+</file>
+
+<file path="api_get_service/routes.py">
+from flask import Blueprint, jsonify
+from datetime import date, timedelta
+from db_service.database import patients, doctors, appointments
+from db_service.models import serialize
+
+get_bp = Blueprint("get_service", __name__)
+
+
+def calculate_time_elapsed(date_str):
+    if not date_str:
+        return {"years": 0, "months": 0, "days": 0}
+    try:
+        day, month, year = date_str.split("/")
+        item_date = date(int(year), int(month), int(day))
+        today = date.today()
+
+        years = today.year - item_date.year
+        months = today.month - item_date.month
+        days = today.day - item_date.day
+
+        if days < 0:
+            months -= 1
+            prev_month = today.month - 1 if today.month > 1 else 12
+            prev_year = today.year if today.month > 1 else today.year - 1
+            days += (date(prev_year, prev_month, 1) - timedelta(days=1)).day
+
+        if months < 0:
+            years -= 1
+            months += 12
+
+        return {"years": years, "months": months, "days": days}
+    except Exception:
+        return {"years": 0, "months": 0, "days": 0}
+
+
+def parse_and_sort(data):
+    for item in data:
+        try:
+            day, month, year = item["registrationDate"].split("/")
+            item["_parsedDate"] = date(int(year), int(month), int(day))
+        except Exception:
+            item["_parsedDate"] = date.min
+    return sorted(data, key=lambda x: x["_parsedDate"], reverse=True)
+
+
+@get_bp.route("/api/ser-salud/patients")
+def get_all_patients():
+    data = list(patients.find())
+    return jsonify([serialize(d) for d in data])
+
+
+@get_bp.route("/api/ser-salud/patients/ordered")
+def get_ordered_patients():
+    data = list(patients.find())
+    sorted_data = parse_and_sort(data)
+    result = []
+    for item in sorted_data:
+        elapsed = calculate_time_elapsed(item.get("registrationDate", ""))
+        del item["_parsedDate"]
+        item["registeredAgo"] = elapsed
+        result.append(serialize(item))
+    return jsonify(result)
+
+
+@get_bp.route("/api/ser-salud/patients/categories")
+def get_patients_categories():
+    data = list(patients.find())
+    sorted_data = parse_and_sort(data)
+    result = {"active": [], "inactive": []}
+    for item in sorted_data:
+        del item["_parsedDate"]
+        key = "active" if item.get("isActive", True) else "inactive"
+        result[key].append(serialize(item))
+    return jsonify(result)
+
+
+@get_bp.route("/api/ser-salud/patients/category/<status>")
+def get_patients_by_category(status):
+    if status not in ("valid", "invalid"):
+        return jsonify({"error": "Status must be 'valid' or 'invalid'"}), 400
+    is_active = status == "valid"
+    data = list(patients.find({"isActive": is_active}))
+    return jsonify([serialize(d) for d in data])
+
+
+@get_bp.route("/api/ser-salud/doctors")
+def get_all_doctors():
+    data = list(doctors.find())
+    return jsonify([serialize(d) for d in data])
+
+
+@get_bp.route("/api/ser-salud/appointments")
+def get_all_appointments():
+    data = list(appointments.find())
+    return jsonify([serialize(d) for d in data])
+</file>
+
+<file path="api_post_service/__init__.py">
+
+</file>
+
+<file path="api_post_service/routes.py">
+from flask import Blueprint, request, jsonify
+from datetime import datetime
+from db_service.database import patients, doctors, appointments, therapies
+from db_service.models import serialize
+
+post_bp = Blueprint("post_service", __name__)
+
+
+@post_bp.route("/api/ser-salud/patient", methods=["POST"])
+def create_patient():
+    try:
+        data = request.get_json()
+        last = patients.find_one({"id": {"$exists": True}}, sort=[("id", -1)])
+        data["id"] = (last["id"] + 1) if last and "id" in last else 1
+        data.setdefault("isActive", True)
+        result = patients.insert_one(data)
+        created = patients.find_one({"_id": result.inserted_id})
+        return jsonify(serialize(created)), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@post_bp.route("/api/ser-salud/doctor", methods=["POST"])
+def create_doctor():
+    try:
+        data = request.get_json()
+        last = doctors.find_one({"id": {"$exists": True}}, sort=[("id", -1)])
+        data["id"] = (last["id"] + 1) if last and "id" in last else 1
+        data.setdefault("isActive", True)
+        result = doctors.insert_one(data)
+        created = doctors.find_one({"_id": result.inserted_id})
+        return jsonify(serialize(created)), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@post_bp.route("/api/ser-salud/appointment", methods=["POST"])
+def create_appointment():
+    try:
+        data = request.get_json()
+        last = appointments.find_one({"id": {"$exists": True}}, sort=[("id", -1)])
+        data["id"] = (last["id"] + 1) if last and "id" in last else 1
+        data.setdefault("status", "pending")
+        data.setdefault("createdAt", datetime.now().isoformat())
+        data.setdefault("isActive", True)
+        result = appointments.insert_one(data)
+        created = appointments.find_one({"_id": result.inserted_id})
+        return jsonify(serialize(created)), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@post_bp.route("/api/ser-salud/seed", methods=["POST"])
+def seed_database():
+    try:
+        if patients.count_documents({}) == 0:
+            sample_patients = [
+                {"fullName": "Carlos Rivera", "email": "carlos.rivera@email.com", "phone": "555-0101", "age": 45, "diagnosis": "Lumbar pain", "insuranceType": "Private", "registrationDate": "15/01/2026", "isActive": True},
+                {"fullName": "Maria Torres", "email": "maria.torres@email.com", "phone": "555-0102", "age": 38, "diagnosis": "Ankle sprain", "insuranceType": "Public", "registrationDate": "22/02/2026", "isActive": True},
+                {"fullName": "Juan Perez", "email": "juan.perez@email.com", "phone": "555-0103", "age": 52, "diagnosis": "Cervical pain", "insuranceType": "Private", "registrationDate": "10/03/2026", "isActive": True},
+                {"fullName": "Ana Gomez", "email": "ana.gomez@email.com", "phone": "555-0104", "age": 29, "diagnosis": "Sports rehab", "insuranceType": "Public", "registrationDate": "05/04/2026", "isActive": False},
+                {"fullName": "Luis Fernandez", "email": "luis.fernandez@email.com", "phone": "555-0105", "age": 61, "diagnosis": "Knee osteoarthritis", "insuranceType": "Private", "registrationDate": "18/05/2026", "isActive": True},
+            ]
+            for i, p in enumerate(sample_patients):
+                p["id"] = i + 1
+            patients.insert_many(sample_patients)
+
+        if doctors.count_documents({}) == 0:
+            sample_doctors = [
+                {"id": 1, "fullName": "Dr. Ricardo Mendoza", "specialty": "Traumatology", "licenseNumber": "LIC-001", "rating": 4.8, "email": "ricardo.mendoza@clinica.com", "phone": "555-1001", "isActive": True},
+                {"id": 2, "fullName": "Dra. Patricia Vega", "specialty": "Physical Therapy", "licenseNumber": "LIC-002", "rating": 4.9, "email": "patricia.vega@clinica.com", "phone": "555-1002", "isActive": True},
+                {"id": 3, "fullName": "Dr. Andres Rios", "specialty": "Sports Medicine", "licenseNumber": "LIC-003", "rating": 4.6, "email": "andres.rios@clinica.com", "phone": "555-1003", "isActive": False},
+            ]
+            doctors.insert_many(sample_doctors)
+
+        if therapies.count_documents({}) == 0:
+            sample_therapies = [
+                {"id": 1, "name": "Manual Therapy", "description": "Hands-on techniques for pain relief", "specialty": "Physical Therapy", "duration": 45, "price": 50.0},
+                {"id": 2, "name": "Electrotherapy", "description": "Electrical stimulation for muscle recovery", "specialty": "Physical Therapy", "duration": 30, "price": 40.0},
+                {"id": 3, "name": "Therapeutic Ultrasound", "description": "Deep tissue heating and healing", "specialty": "Traumatology", "duration": 20, "price": 35.0},
+                {"id": 4, "name": "Sports Rehabilitation", "description": "Recovery program for athletes", "specialty": "Sports Medicine", "duration": 60, "price": 70.0},
+            ]
+            therapies.insert_many(sample_therapies)
+
+        if appointments.count_documents({}) == 0:
+            sample_appointments = [
+                {"id": 1, "patientId": 1, "doctorId": 1, "therapyId": 1, "date": "10/07/2026", "time": "09:00", "status": "confirmed", "symptoms": "Lower back pain after lifting", "hasExams": True, "exams": "X-Ray lumbar spine", "notes": "First session", "createdAt": "2026-07-01T10:00:00", "isActive": True},
+                {"id": 2, "patientId": 2, "doctorId": 2, "therapyId": 2, "date": "11/07/2026", "time": "10:30", "status": "pending", "symptoms": "Ankle swelling after sprain", "hasExams": False, "exams": "", "notes": "", "createdAt": "2026-07-02T14:00:00", "isActive": True},
+                {"id": 3, "patientId": 3, "doctorId": 1, "therapyId": 3, "date": "12/07/2026", "time": "11:00", "status": "completed", "symptoms": "Neck stiffness and headaches", "hasExams": True, "exams": "MRI cervical spine", "notes": "Patient showing improvement", "createdAt": "2026-06-28T09:00:00", "isActive": True},
+            ]
+            appointments.insert_many(sample_appointments)
+
+        return jsonify({"message": "Database seeded successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+</file>
+
+<file path="api_put_service/__init__.py">
+
+</file>
+
+<file path="api_put_service/routes.py">
+from flask import Blueprint, request, jsonify
+from db_service.database import patients, doctors, appointments
+from db_service.models import serialize
+
+put_bp = Blueprint("put_service", __name__)
+
+
+@put_bp.route("/api/ser-salud/patient/<int:patient_id>", methods=["PUT"])
+def update_patient(patient_id):
+    try:
+        data = request.get_json()
+        data.pop("id", None)
+        result = patients.find_one_and_update(
+            {"id": patient_id},
+            {"$set": data},
+            return_document=True,
+        )
+        if not result:
+            return jsonify({"error": "Patient not found"}), 404
+        return jsonify(serialize(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@put_bp.route("/api/ser-salud/doctor/<int:doctor_id>", methods=["PUT"])
+def update_doctor(doctor_id):
+    try:
+        data = request.get_json()
+        data.pop("id", None)
+        result = doctors.find_one_and_update(
+            {"id": doctor_id},
+            {"$set": data},
+            return_document=True,
+        )
+        if not result:
+            return jsonify({"error": "Doctor not found"}), 404
+        return jsonify(serialize(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@put_bp.route("/api/ser-salud/appointment/<int:appointment_id>", methods=["PUT"])
+def update_appointment(appointment_id):
+    try:
+        data = request.get_json()
+        data.pop("id", None)
+        result = appointments.find_one_and_update(
+            {"id": appointment_id},
+            {"$set": data},
+            return_document=True,
+        )
+        if not result:
+            return jsonify({"error": "Appointment not found"}), 404
+        return jsonify(serialize(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+</file>
+
+<file path="db_service/__init__.py">
+
+</file>
+
+<file path="db_service/database.py">
+from pymongo import MongoClient
+from config import MONGO_URI, DB_NAME
+
+client = MongoClient(MONGO_URI)
+db = client[DB_NAME]
+
+patients = db["patients"]
+doctors = db["doctors"]
+appointments = db["appointments"]
+therapies = db["therapies"]
+</file>
+
+<file path="db_service/models.py">
+def serialize(doc):
+    if doc is None:
+        return None
+    doc["_id"] = str(doc["_id"])
+    return doc
+</file>
+
+<file path="frontend/static/css/styles.css">
+[v-cloak] {
+    display: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+body {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0f172a;
+}
+</file>
+
+<file path="frontend/static/js/app.js">
+const { createApp, ref, reactive, computed, onMounted } = Vue;
+const { createRouter, createWebHistory } = VueRouter;
+
+const API = {
+    patients: {
+        get: '/api/ser-salud/patients',
+        post: '/api/ser-salud/patient',
+        put: '/api/ser-salud/patient',
+        delete: '/api/ser-salud/patient',
+    },
+    doctors: {
+        get: '/api/ser-salud/doctors',
+        post: '/api/ser-salud/doctor',
+        put: '/api/ser-salud/doctor',
+        delete: '/api/ser-salud/doctor',
+    },
+    appointments: {
+        get: '/api/ser-salud/appointments',
+        post: '/api/ser-salud/appointment',
+        put: '/api/ser-salud/appointment',
+    },
+};
+
+function insuranceBadge(type) {
+    if (type === 'Private') return 'text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full text-xs font-medium';
+    if (type === 'Public') return 'text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded-full text-xs font-medium';
+    return 'text-slate-500 bg-slate-500/10 px-2 py-0.5 rounded-full text-xs font-medium';
+}
+
+function statusBadge(status) {
+    const map = {
+        pending: 'text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full text-xs font-medium',
+        confirmed: 'text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full text-xs font-medium',
+        completed: 'text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full text-xs font-medium',
+        cancelled: 'text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded-full text-xs font-medium',
+    };
+    return map[status] || map.pending;
+}
+
+const Dashboard = {
+    template: '#dashboard-template',
+    setup() {
+        const stats = reactive({ patients: 0, doctors: 0, appointments: 0 });
+        const recentAppointments = ref([]);
+
+        async function fetchStats() {
+            try {
+                const [p, d, a] = await Promise.all([
+                    fetch(API.patients.get).then(r => r.json()),
+                    fetch(API.doctors.get).then(r => r.json()),
+                    fetch(API.appointments.get).then(r => r.json()),
+                ]);
+                stats.patients = Array.isArray(p) ? p.length : 0;
+                stats.doctors = Array.isArray(d) ? d.length : 0;
+                stats.appointments = Array.isArray(a) ? a.length : 0;
+                recentAppointments.value = Array.isArray(a) ? a.slice(-5).reverse() : [];
+            } catch (e) {
+                console.error('Dashboard fetch error:', e);
+            }
+        }
+
+        onMounted(fetchStats);
+
+        return { stats, recentAppointments, statusBadge };
+    },
+};
+
+const PatientsList = {
+    template: '#patients-list-template',
+    setup() {
+        const patientsList = ref([]);
+        const isLoading = ref(true);
+        const editForm = reactive({ id: null, fullName: '', email: '', phone: '', age: '', diagnosis: '', insuranceType: '' });
+
+        async function fetchPatients() {
+            isLoading.value = true;
+            try {
+                const r = await fetch(API.patients.get);
+                patientsList.value = await r.json();
+            } catch (e) {
+                console.error('Fetch patients error:', e);
+            } finally {
+                isLoading.value = false;
+            }
+        }
+
+        function startEdit(p) {
+            editForm.id = p.id;
+            editForm.fullName = p.fullName || '';
+            editForm.email = p.email || '';
+            editForm.phone = p.phone || '';
+            editForm.age = p.age || '';
+            editForm.diagnosis = p.diagnosis || '';
+            editForm.insuranceType = p.insuranceType || '';
+        }
+
+        function cancelEdit() {
+            editForm.id = null;
+        }
+
+        async function updatePatient() {
+            try {
+                const body = { ...editForm };
+                await fetch(API.patients.put + '/' + editForm.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                cancelEdit();
+                await fetchPatients();
+            } catch (e) {
+                console.error('Update patient error:', e);
+            }
+        }
+
+        async function removePatient(id) {
+            if (!confirm('Delete patient #' + id + '?')) return;
+            try {
+                await fetch(API.patients.delete + '/' + id, { method: 'DELETE' });
+                await fetchPatients();
+            } catch (e) {
+                console.error('Delete patient error:', e);
+            }
+        }
+
+        onMounted(fetchPatients);
+
+        return { patientsList, isLoading, editForm, startEdit, cancelEdit, updatePatient, removePatient, insuranceBadge };
+    },
+};
+
+const PatientCreate = {
+    template: '#patient-create-template',
+    setup() {
+        const router = VueRouter.useRouter();
+        const form = reactive({
+            fullName: '', email: '', phone: '', age: '',
+            diagnosis: '', insuranceType: '',
+        });
+
+        async function createPatient() {
+            try {
+                const body = { ...form };
+                const d = new Date();
+                body.registrationDate =
+                    String(d.getDate()).padStart(2, '0') + '/' +
+                    String(d.getMonth() + 1).padStart(2, '0') + '/' +
+                    d.getFullYear();
+                await fetch(API.patients.post, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                router.push('/patients');
+            } catch (e) {
+                console.error('Create patient error:', e);
+            }
+        }
+
+        return { form, createPatient };
+    },
+};
+
+const DoctorsList = {
+    template: '#doctors-list-template',
+    setup() {
+        const doctorsList = ref([]);
+        const isLoading = ref(true);
+
+        async function fetchDoctors() {
+            isLoading.value = true;
+            try {
+                const r = await fetch(API.doctors.get);
+                doctorsList.value = await r.json();
+            } catch (e) {
+                console.error('Fetch doctors error:', e);
+            } finally {
+                isLoading.value = false;
+            }
+        }
+
+        onMounted(fetchDoctors);
+
+        return { doctorsList, isLoading };
+    },
+};
+
+const DoctorCreate = {
+    template: '#doctor-create-template',
+    setup() {
+        const router = VueRouter.useRouter();
+        const form = reactive({
+            fullName: '', specialty: '', licenseNumber: '',
+            rating: '', email: '', phone: '',
+        });
+
+        async function createDoctor() {
+            try {
+                const body = { ...form };
+                await fetch(API.doctors.post, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                router.push('/doctors');
+            } catch (e) {
+                console.error('Create doctor error:', e);
+            }
+        }
+
+        return { form, createDoctor };
+    },
+};
+
+const AppointmentsList = {
+    template: '#appointments-list-template',
+    setup() {
+        const appointmentsList = ref([]);
+        const isLoading = ref(true);
+
+        async function fetchAppointments() {
+            isLoading.value = true;
+            try {
+                const r = await fetch(API.appointments.get);
+                appointmentsList.value = await r.json();
+            } catch (e) {
+                console.error('Fetch appointments error:', e);
+            } finally {
+                isLoading.value = false;
+            }
+        }
+
+        onMounted(fetchAppointments);
+
+        return { appointmentsList, isLoading, statusBadge };
+    },
+};
+
+const AppointmentCreate = {
+    template: '#appointment-create-template',
+    setup() {
+        const router = VueRouter.useRouter();
+        const form = reactive({
+            patientId: '', doctorId: '', therapyId: '',
+            date: '', time: '', status: 'pending', symptoms: '',
+        });
+
+        async function createAppointment() {
+            try {
+                const body = { ...form };
+                await fetch(API.appointments.post, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                router.push('/appointments');
+            } catch (e) {
+                console.error('Create appointment error:', e);
+            }
+        }
+
+        return { form, createAppointment };
+    },
+};
+
+const routes = [
+    { path: '/', redirect: '/home' },
+    { path: '/home', component: Dashboard },
+    { path: '/patients', component: PatientsList },
+    { path: '/patient/create', component: PatientCreate },
+    { path: '/doctors', component: DoctorsList },
+    { path: '/doctor/create', component: DoctorCreate },
+    { path: '/appointments', component: AppointmentsList },
+    { path: '/appointment/create', component: AppointmentCreate },
+];
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes,
+});
+
+const app = createApp({
+    data() {
+        return { mobileOpen: false };
+    },
+});
+app.use(router);
+app.mount('#app');
+</file>
+
+<file path="frontend/templates/dashboard.html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ser-Salud | Clinic Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out', 'slide-down': 'slideDown 0.3s ease-out' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans min-h-screen">
+{% raw %}
+    <div id="app" v-cloak>
+        <nav class="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <router-link to="/home" class="flex items-center gap-3 shrink-0">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.7 50.7 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.8 50.8 0 0 1 12 13.87a50.8 50.8 0 0 1 7.74-3.723M4.26 10.147a59.904 59.904 0 0 0 1.918 8.365M20.82 10.147a59.904 59.904 0 0 1-1.918 8.365" />
+                            </svg>
+                        </div>
+                        <span class="text-lg font-bold text-white tracking-tight">Ser-Salud</span>
+                    </router-link>
+
+                    <div class="hidden md:flex items-center gap-1">
+                        <router-link to="/home" class="nav-link" active-class="nav-link-active">Home</router-link>
+                        <div class="relative group">
+                            <router-link to="/patients" class="nav-link" active-class="nav-link-active">
+                                Patients
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/patients" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Patient List</router-link>
+                                <router-link to="/patient/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Patient</router-link>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <router-link to="/doctors" class="nav-link" active-class="nav-link-active">
+                                Doctors
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/doctors" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Doctor List</router-link>
+                                <router-link to="/doctor/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Doctor</router-link>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <router-link to="/appointments" class="nav-link" active-class="nav-link-active">
+                                Appointments
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/appointments" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Appointment List</router-link>
+                                <router-link to="/appointment/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Appointment</router-link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                        <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path v-if="!mobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="mobileOpen" class="md:hidden border-t border-slate-800 bg-slate-900 animate-slide-down">
+                <div class="px-4 py-3 space-y-1">
+                    <router-link @click="mobileOpen = false" to="/home" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400" exact-active-class="bg-slate-800 text-emerald-400">Home</router-link>
+                    <router-link @click="mobileOpen = false" to="/patients" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Patient List</router-link>
+                    <router-link @click="mobileOpen = false" to="/patient/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Patient</router-link>
+                    <router-link @click="mobileOpen = false" to="/doctors" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Doctor List</router-link>
+                    <router-link @click="mobileOpen = false" to="/doctor/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Doctor</router-link>
+                    <router-link @click="mobileOpen = false" to="/appointments" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Appointment List</router-link>
+                    <router-link @click="mobileOpen = false" to="/appointment/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Appointment</router-link>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+            <router-view />
+        </main>
+
+        <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-6">
+            <div class="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+                <p>Ser-Salud Clinic Management</p>
+                <p>Powered by <span class="text-sky-400">MongoDB Atlas</span> &bull; Deployed on <span class="text-sky-400">Railway</span></p>
+            </div>
+        </footer>
+    </div>
+
+    <template id="dashboard-template">
+        <div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <router-link to="/patients" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.patients }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Patients</h3>
+                </router-link>
+                <router-link to="/doctors" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.doctors }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Doctors</h3>
+                </router-link>
+                <router-link to="/appointments" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.appointments }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Appointments</h3>
+                </router-link>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-4">Quick Actions</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <router-link to="/patient/create" class="flex items-center justify-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-xl px-6 py-4 text-emerald-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Register Patient
+                    </router-link>
+                    <router-link to="/doctor/create" class="flex items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-xl px-6 py-4 text-blue-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Add Doctor
+                    </router-link>
+                    <router-link to="/appointment/create" class="flex items-center justify-center gap-2 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-600/30 rounded-xl px-6 py-4 text-amber-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Schedule Appointment
+                    </router-link>
+                </div>
+            </div>
+
+            <div v-if="recentAppointments.length" class="mt-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-4">Recent Appointments</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <th class="pb-3 font-semibold">Patient</th><th class="pb-3 font-semibold">Date</th><th class="pb-3 font-semibold">Time</th><th class="pb-3 font-semibold">Status</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-for="a in recentAppointments" :key="a.id" class="text-sm">
+                                <td class="py-3 text-slate-200">#{{ a.patientId }}</td>
+                                <td class="py-3 text-slate-400">{{ a.date }}</td>
+                                <td class="py-3 text-slate-400">{{ a.time }}</td>
+                                <td class="py-3"><span :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="patients-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Patients</h1>
+                <router-link to="/patient/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Patient
+                </router-link>
+            </div>
+
+            <div v-if="editForm.id" class="mb-6 bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-lg">
+                <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4">Editing Patient #{{ editForm.id }}</h3>
+                <form @submit.prevent="updatePatient" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <input type="text" v-model="editForm.fullName" placeholder="Full Name" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    <input type="email" v-model="editForm.email" placeholder="Email" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="text" v-model="editForm.phone" placeholder="Phone" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="number" v-model="editForm.age" placeholder="Age" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="text" v-model="editForm.diagnosis" placeholder="Diagnosis" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <select v-model="editForm.insuranceType" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="" disabled>Insurance</option>
+                        <option value="Public">Public</option>
+                        <option value="Private">Private</option>
+                        <option value="None">None</option>
+                    </select>
+                    <div class="col-span-full flex gap-3 pt-2">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm">Save Changes</button>
+                        <button type="button" @click="cancelEdit" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Full Name</th>
+                                <th class="p-5 font-semibold">Email</th>
+                                <th class="p-5 font-semibold">Age</th>
+                                <th class="p-5 font-semibold">Diagnosis</th>
+                                <th class="p-5 font-semibold">Insurance</th>
+                                <th class="p-5 font-semibold">Status</th>
+                                <th class="p-5 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="8" class="p-10 text-center text-slate-500">Loading patients...</td></tr>
+                            <tr v-for="p in patientsList" :key="p._id || p.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ p.id }}</td>
+                                <td class="p-5 text-slate-200 font-medium">{{ p.fullName }}</td>
+                                <td class="p-5 text-sm text-slate-400">{{ p.email || 'N/A' }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">{{ p.age || 'N/A' }}</td>
+                                <td class="p-5 text-sm text-slate-400 max-w-xs truncate">{{ p.diagnosis || 'N/A' }}</td>
+                                <td class="p-5 text-sm"><span :class="insuranceBadge(p.insuranceType)">{{ p.insuranceType || 'N/A' }}</span></td>
+                                <td class="p-5"><span :class="p.isActive ? 'text-emerald-400' : 'text-rose-400'" class="text-xs font-semibold">{{ p.isActive ? 'Active' : 'Inactive' }}</span></td>
+                                <td class="p-5">
+                                    <div class="flex gap-2">
+                                        <button @click="startEdit(p)" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition-colors">Edit</button>
+                                        <button @click="removePatient(p.id)" class="text-xs bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="patient-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/patients" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Patient</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createPatient" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                        <input type="text" v-model="form.fullName" placeholder="e.g. Juan Perez" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                        <input type="email" v-model="form.email" placeholder="patient@email.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Phone</label>
+                        <input type="text" v-model="form.phone" placeholder="555-0100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Age</label>
+                        <input type="number" v-model="form.age" placeholder="30" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Insurance</label>
+                        <select v-model="form.insuranceType" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="" disabled>Select type</option>
+                            <option value="Public">Public</option>
+                            <option value="Private">Private</option>
+                            <option value="None">None</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Diagnosis</label>
+                        <input type="text" v-model="form.diagnosis" placeholder="Initial diagnosis" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Save Patient</button>
+                        <router-link to="/patients" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <template id="doctors-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Doctors</h1>
+                <router-link to="/doctor/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Doctor
+                </router-link>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Name</th>
+                                <th class="p-5 font-semibold">Specialty</th>
+                                <th class="p-5 font-semibold">License</th>
+                                <th class="p-5 font-semibold">Rating</th>
+                                <th class="p-5 font-semibold">Contact</th>
+                                <th class="p-5 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="7" class="p-10 text-center text-slate-500">Loading doctors...</td></tr>
+                            <tr v-for="d in doctorsList" :key="d._id || d.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ d.id }}</td>
+                                <td class="p-5 text-slate-200 font-medium">{{ d.fullName }}</td>
+                                <td class="p-5 text-sm text-slate-400">{{ d.specialty }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">{{ d.licenseNumber || 'N/A' }}</td>
+                                <td class="p-5"><span class="text-amber-400 font-semibold">{{ d.rating || 'N/A' }}</span></td>
+                                <td class="p-5 text-sm text-slate-400">{{ d.email || d.phone || 'N/A' }}</td>
+                                <td class="p-5"><span :class="d.isActive ? 'text-emerald-400' : 'text-rose-400'" class="text-xs font-semibold">{{ d.isActive ? 'Active' : 'Inactive' }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="doctor-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/doctors" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Doctor</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createDoctor" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                        <input type="text" v-model="form.fullName" placeholder="e.g. Dr. Ricardo Mendoza" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Specialty</label>
+                        <input type="text" v-model="form.specialty" placeholder="e.g. Traumatology" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">License Number</label>
+                        <input type="text" v-model="form.licenseNumber" placeholder="LIC-001" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Rating (0-5)</label>
+                        <input type="number" step="0.1" v-model="form.rating" placeholder="4.5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                        <input type="email" v-model="form.email" placeholder="doctor@clinica.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Phone</label>
+                        <input type="text" v-model="form.phone" placeholder="555-1000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Save Doctor</button>
+                        <router-link to="/doctors" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <template id="appointments-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Appointments</h1>
+                <router-link to="/appointment/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Appointment
+                </router-link>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Patient</th>
+                                <th class="p-5 font-semibold">Doctor</th>
+                                <th class="p-5 font-semibold">Date</th>
+                                <th class="p-5 font-semibold">Time</th>
+                                <th class="p-5 font-semibold">Status</th>
+                                <th class="p-5 font-semibold">Symptoms</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="7" class="p-10 text-center text-slate-500">Loading appointments...</td></tr>
+                            <tr v-for="a in appointmentsList" :key="a._id || a.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ a.id }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">#{{ a.patientId }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">#{{ a.doctorId }}</td>
+                                <td class="p-5 text-sm text-slate-200">{{ a.date }}</td>
+                                <td class="p-5 text-sm text-slate-200">{{ a.time }}</td>
+                                <td class="p-5"><span :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                                <td class="p-5 text-sm text-slate-400 max-w-xs truncate">{{ a.symptoms || 'N/A' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="appointment-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/appointments" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Appointment</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createAppointment" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Patient ID</label>
+                        <input type="number" v-model="form.patientId" placeholder="e.g. 1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Doctor ID</label>
+                        <input type="number" v-model="form.doctorId" placeholder="e.g. 1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Date (DD/MM/YYYY)</label>
+                        <input type="text" v-model="form.date" placeholder="15/07/2026" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Time (HH:MM)</label>
+                        <input type="text" v-model="form.time" placeholder="14:00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+                        <select v-model="form.status" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Therapy ID</label>
+                        <input type="number" v-model="form.therapyId" placeholder="Optional" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Symptoms</label>
+                        <input type="text" v-model="form.symptoms" placeholder="Describe symptoms" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Schedule Appointment</button>
+                        <router-link to="/appointments" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <script src="/static/js/app.js"></script>
+{% endraw %}
+</body>
+</html>
+</file>
+
+<file path="frontend/__init__.py">
+
+</file>
+
+<file path="frontend/routes.py">
+from flask import Blueprint, render_template
+
+frontend_bp = Blueprint("frontend", __name__, template_folder="templates")
+
+
+@frontend_bp.route("/")
+@frontend_bp.route("/home")
+@frontend_bp.route("/patients")
+@frontend_bp.route("/patient/create")
+@frontend_bp.route("/doctors")
+@frontend_bp.route("/doctor/create")
+@frontend_bp.route("/appointments")
+@frontend_bp.route("/appointment/create")
+def index():
+    return render_template("dashboard.html")
+</file>
+
+<file path=".gitignore">
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+</file>
+
+<file path="app.py">
+import os
+from flask import Flask
+from flask_cors import CORS
+
+app = Flask(__name__, static_folder="frontend/static", static_url_path="/static")
+CORS(app)
+
+from api_get_service.routes import get_bp
+from api_post_service.routes import post_bp
+from api_put_service.routes import put_bp
+from api_delete_service.routes import delete_bp
+from frontend.routes import frontend_bp
+
+app.register_blueprint(get_bp)
+app.register_blueprint(post_bp)
+app.register_blueprint(put_bp)
+app.register_blueprint(delete_bp)
+app.register_blueprint(frontend_bp)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+</file>
+
+<file path="config.py">
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+DB_NAME = os.getenv("DB_NAME", "clinic_management")
+APP_NAME = os.getenv("APP_NAME", "ser-salud")
+PORT = int(os.getenv("PORT", 5000))
+</file>
+
+<file path="LICENSE">
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+</file>
+
+<file path="Procfile">
+web: python app.py
+</file>
+
+<file path="railway.json">
+{
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "startCommand": "python app.py",
+    "restartPolicyType": "always"
+  }
+}
+</file>
+
+<file path="README.md">
+# PythonSerSalud
+AWS
+</file>
+
+<file path="repomix-output-DiverCesar-exam_u2_template.git.xml">
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+The content has been processed where security check has been disabled.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Security check has been disabled - content may contain sensitive information
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+api-delete-service/
+  routes/
+    deleteRoutes.js
+  package.json
+  server.js
+api-get-service/
+  routes/
+    getRoutes.js
+  package.json
+  server.js
+api-post-service/
+  routes/
+    postRoutes.js
+  package.json
+  server.js
+api-put-service/
+  routes/
+    putRoutes.js
+  package.json
+  server.js
+db-service/
+  models/
+    Schema.js
+  routes/
+    dbRoutes.js
+  package.json
+  server.js
+frontend-service/
+  css/
+    styles.css
+  js/
+    app.js
+  index.html
+.gitignore
+LICENSE
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api-delete-service/routes/deleteRoutes.js">
+const express = require("express");
+const router = express.Router();
+
+router.delete(`/${process.env.APP_NAME}/${process.env.ITEM_SINGULAR}/:id`, async (req, res) => {
+    try {
+        const response = await fetch(`http://${process.env.DB_HOST || 'localhost'}:${process.env.PORT_DB}/db/${process.env.ITEM_SINGULAR}/${req.params.id}`, {
+            method: "DELETE"
+        });
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="api-delete-service/package.json">
+{
+  "name": "microservice-module-apideleteservice",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0"
+  }
+}
+</file>
+
+<file path="api-delete-service/server.js">
+require("dotenv").config({ path: "../.env" });
+const express = require("express");
+const cors = require("cors");
+const deleteRoutes = require("./routes/deleteRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/", deleteRoutes);
+
+app.listen(process.env.PORT_DELETE, () => {
+    console.log(`[SUCCESS] ${process.env.APP_NAME} API DELETE Service is up and running for ${process.env.ITEM_PLURAL} on port ${process.env.PORT_DELETE}`);
+});
+</file>
+
+<file path="api-get-service/routes/getRoutes.js">
+const express = require("express");
+const router = express.Router();
+
+const fetchData = async () => {
+    const response = await fetch(`http://${process.env.DB_HOST || 'localhost'}:${process.env.PORT_DB}/db/${process.env.ITEM_PLURAL}`);
+    return await response.json();
+};
+
+const calculateTimeElapsed = (dateString) => {
+    if (!dateString) return { years: 0, months: 0, days: 0 };
+    const [day, month, year] = dateString.split("/");
+    const itemDate = new Date(year, month - 1, day);
+    const currentDate = new Date();
+    
+    let years = currentDate.getFullYear() - itemDate.getFullYear();
+    let months = currentDate.getMonth() - itemDate.getMonth();
+    let days = currentDate.getDate() - itemDate.getDate();
+
+    if (days < 0) {
+        months -= 1;
+        const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+        days += previousMonth.getDate();
+    }
+    if (months < 0) {
+        years -= 1;
+        months += 12;
+    }
+    return { years, months, days };
+};
+
+const parseAndSortData = (data) => {
+    const processedData = data.map(item => {
+        const [day, month, year] = item.date.split("/");
+        return { ...item, parsedDate: new Date(year, month - 1, day) };
+    });
+    return processedData.sort((a, b) => b.parsedDate - a.parsedDate);
+};
+
+router.get(`/${process.env.APP_NAME}/${process.env.ITEM_PLURAL}`, async (req, res) => {
+    try {
+        const data = await fetchData();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get(`/${process.env.APP_NAME}/${process.env.ITEM_PLURAL}/ordered`, async (req, res) => {
+    try {
+        const data = await fetchData();
+        const sortedData = parseAndSortData(data);
+        
+        const finalData = sortedData.map(item => {
+            const addedAgo = calculateTimeElapsed(item.date);
+            delete item.parsedDate;
+            return { ...item, addedAgo };
+        });
+        
+        res.json(finalData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get(`/${process.env.APP_NAME}/${process.env.ITEM_PLURAL}/categories`, async (req, res) => {
+    try {
+        const data = await fetchData();
+        const sortedData = parseAndSortData(data);
+        
+        const result = sortedData.reduce((acc, item) => {
+            delete item.parsedDate;
+            if (item.isActive) acc.active.push(item);
+            else acc.inactive.push(item);
+            return acc;
+        }, { active: [], inactive: [] });
+        
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get(`/${process.env.APP_NAME}/${process.env.ITEM_PLURAL}/category/:status`, async (req, res) => {
+    try {
+        const { status } = req.params;
+        if (status !== 'valid' && status !== 'invalid') {
+            return res.status(400).json({ error: "Invalid status" });
+        }
+        
+        const data = await fetchData();
+        const sortedData = parseAndSortData(data);
+        const isTargetActive = status === 'valid';
+        
+        const filteredData = sortedData.filter(item => item.isActive === isTargetActive).map(item => {
+            delete item.parsedDate;
+            return item;
+        });
+        
+        res.json(filteredData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="api-get-service/package.json">
+{
+  "name": "microservice-module-apigetservice",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0"
+  }
+}
+</file>
+
+<file path="api-get-service/server.js">
+require("dotenv").config({ path: "../.env" });
+const express = require("express");
+const cors = require("cors");
+const getRoutes = require("./routes/getRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/", getRoutes);
+
+app.listen(process.env.PORT_GET, () => {
+    console.log(`[SUCCESS] ${process.env.APP_NAME} API GET Service is up and running for ${process.env.ITEM_PLURAL} on port ${process.env.PORT_GET}`);
+});
+</file>
+
+<file path="api-post-service/routes/postRoutes.js">
+const express = require("express");
+const router = express.Router();
+
+router.post(`/${process.env.APP_NAME}/${process.env.ITEM_SINGULAR}`, async (req, res) => {
+    try {
+        const response = await fetch(`http://${process.env.DB_HOST || 'localhost'}:${process.env.PORT_DB}/db/${process.env.ITEM_SINGULAR}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="api-post-service/package.json">
+{
+  "name": "microservice-module-apipostservice",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0"
+  }
+}
+</file>
+
+<file path="api-post-service/server.js">
+require("dotenv").config({ path: "../.env" });
+const express = require("express");
+const cors = require("cors");
+const postRoutes = require("./routes/postRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/", postRoutes);
+
+app.listen(process.env.PORT_POST, () => {
+    console.log(`[SUCCESS] ${process.env.APP_NAME} API POST Service is up and running for ${process.env.ITEM_PLURAL} on port ${process.env.PORT_POST}`);
+});
+</file>
+
+<file path="api-put-service/routes/putRoutes.js">
+const express = require("express");
+const router = express.Router();
+
+router.put(`/${process.env.APP_NAME}/${process.env.ITEM_SINGULAR}/:id`, async (req, res) => {
+    try {
+        const response = await fetch(`http://${process.env.DB_HOST || 'localhost'}:${process.env.PORT_DB}/db/${process.env.ITEM_SINGULAR}/${req.params.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="api-put-service/package.json">
+{
+  "name": "microservice-module-apiputservice",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0"
+  }
+}
+</file>
+
+<file path="api-put-service/server.js">
+require("dotenv").config({ path: "../.env" });
+const express = require("express");
+const cors = require("cors");
+const putRoutes = require("./routes/putRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/", putRoutes);
+
+app.listen(process.env.PORT_PUT, () => {
+    console.log(`[SUCCESS] ${process.env.APP_NAME} API PUT Service is up and running for ${process.env.ITEM_PLURAL} on port ${process.env.PORT_PUT}`);
+});
+</file>
+
+<file path="db-service/models/Schema.js">
+const mongoose = require("mongoose");
+
+const dataSchema = new mongoose.Schema(
+    {
+        id: { type: Number, required: true },
+        name: { type: String, required: true },
+        brand: { type: String },
+        model: { type: String },
+        price: { type: Number },
+        date: { type: String, required: true },
+        description: { type: String },
+        isActive: { type: Boolean, required: true }
+    },
+    { 
+        collection: process.env.ITEM_PLURAL,
+        versionKey: false
+    }
+);
+
+module.exports = mongoose.model("Data", dataSchema);
+</file>
+
+<file path="db-service/routes/dbRoutes.js">
+const express = require("express");
+const router = express.Router();
+const Data = require("../models/Schema");
+
+router.get(`/${process.env.ITEM_PLURAL}`, async (req, res) => {
+    try {
+        const data = await Data.find();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post(`/${process.env.ITEM_SINGULAR}`, async (req, res) => {
+    try {
+        const newData = new Data(req.body);
+        const savedData = await newData.save();
+        res.status(201).json(savedData);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.put(`/${process.env.ITEM_SINGULAR}/:id`, async (req, res) => {
+    try {
+        const updatedData = await Data.findOneAndUpdate(
+            { id: req.params.id },
+            req.body,
+            { new: true }
+        );
+        if (!updatedData) return res.status(404).json({ error: "Not found" });
+        res.json(updatedData);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.delete(`/${process.env.ITEM_SINGULAR}/:id`, async (req, res) => {
+    try {
+        const deletedData = await Data.findOneAndDelete({ id: req.params.id });
+        if (!deletedData) return res.status(404).json({ error: "Not found" });
+        res.json({ message: "Deleted" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="db-service/package.json">
+{
+  "name": "microservice-module-dbservice",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0"
+  }
+}
+</file>
+
+<file path="db-service/server.js">
+require("dotenv").config({ path: "../.env" });
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dbRoutes = require("./routes/dbRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(process.env.MONGO_URI, {
+    dbName: process.env.APP_NAME
+});
+
+app.use("/db", dbRoutes);
+
+app.listen(process.env.PORT_DB, () => {
+    console.log(`[SUCCESS] MongoDB Connection established. Database Service running on port ${process.env.PORT_DB}`);
+});
+</file>
+
+<file path="frontend-service/css/styles.css">
+[v-cloak] {
+    display: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f172a; 
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+}
+</file>
+
+<file path="frontend-service/js/app.js">
+const { createApp, ref, computed, onMounted } = Vue;
+
+const App = {
+    setup() {
+        const API_GET = 'http://localhost:4001/computerstore/customers';
+        const API_POST = 'http://localhost:4002/computerstore/customer';
+        const API_PUT = 'http://localhost:4003/computerstore/customer';
+        const API_DELETE = 'http://localhost:4004/computerstore/customer';
+        
+        const customers = ref([]);
+        const isLoading = ref(true);
+        const deleteId = ref('');
+        const isEditing = ref(false);
+        
+        const formData = ref({
+            id: '',
+            name: '',
+            age: '',
+            moneySpent: '',
+            email: ''
+        });
+
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch(API_GET);
+                const data = await response.json();
+                customers.value = data;
+            } catch (error) {
+                console.error("GET Error:", error);
+            } finally {
+                isLoading.value = false;
+            }
+        };
+
+        const saveCustomer = async () => {
+            try {
+                const url = isEditing.value ? `${API_PUT}/${formData.value.id}` : API_POST;
+                const method = isEditing.value ? "PUT" : "POST";
+                
+                await fetch(url, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData.value)
+                });
+                
+                resetForm();
+                await fetchCustomers();
+            } catch (error) {
+                console.error("Save Error:", error);
+            }
+        };
+
+        const deleteCustomer = async () => {
+            if (!deleteId.value) return;
+            try {
+                await fetch(`${API_DELETE}/${deleteId.value}`, { method: "DELETE" });
+                deleteId.value = '';
+                await fetchCustomers();
+            } catch (error) {
+                console.error("Delete Error:", error);
+            }
+        };
+
+        const editCustomer = (user) => {
+            isEditing.value = true;
+            formData.value = {
+                id: user.id || '',
+                name: user.name || user.fullName || '',
+                age: user.age || '',
+                moneySpent: user.moneySpent || user.totalSale || '',
+                email: user.email || ''
+            };
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        const resetForm = () => {
+            isEditing.value = false;
+            formData.value = { id: '', name: '', age: '', moneySpent: '', email: '' };
+        };
+
+        const totalRevenue = computed(() => {
+            return customers.value.reduce((acc, curr) => {
+                const amount = curr.moneySpent !== undefined ? curr.moneySpent : (curr.totalSale || 0);
+                return acc + Number(amount);
+            }, 0);
+        });
+
+        const formatCurrency = (value) => {
+            return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        onMounted(() => {
+            fetchCustomers();
+        });
+
+        return {
+            customers,
+            isLoading,
+            formData,
+            deleteId,
+            isEditing,
+            totalRevenue,
+            saveCustomer,
+            deleteCustomer,
+            editCustomer,
+            resetForm,
+            formatCurrency
+        };
+    }
+};
+
+createApp(App).mount('#app');
+</file>
+
+<file path="frontend-service/index.html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard | Cloud Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="./css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans min-h-screen p-8 selection:bg-cyan-500 selection:text-white">
+    <div id="app" class="max-w-7xl mx-auto animate-fade-in" v-cloak>
+        
+        <header class="relative overflow-hidden bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 mb-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+            <div class="z-10 flex items-center gap-6">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-white tracking-tight">Cloud Microservices Hub</h1>
+                    <p class="text-slate-400 font-medium tracking-wide text-sm mt-1">Distributed Architecture Dashboard</p>
+                </div>
+            </div>
+            <div class="z-10 text-right border-l border-slate-700/50 pl-8">
+                <h2 class="text-slate-400 text-xs font-bold tracking-[0.2em] uppercase mb-2">Total System Revenue</h2>
+                <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                    ${{ formatCurrency(totalRevenue) }}
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg col-span-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Add / Update Customer</label>
+                <form @submit.prevent="saveCustomer" class="grid grid-cols-2 gap-4">
+                    <input type="number" v-model="formData.id" placeholder="ID" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500" required>
+                    <input type="text" v-model="formData.name" placeholder="Name" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                    <input type="number" v-model="formData.age" placeholder="Age" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                    <input type="number" step="0.01" v-model="formData.moneySpent" placeholder="Money Spent" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                    <input type="email" v-model="formData.email" placeholder="Email" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500 col-span-2">
+                    <div class="col-span-2 flex gap-4">
+                        <button type="submit" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 rounded-lg transition-colors">Submit (POST/PUT)</button>
+                        <button type="button" @click="resetForm" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors">Clear</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-center">
+                <label class="block text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">Delete Customer</label>
+                <form @submit.prevent="deleteCustomer" class="flex flex-col gap-3">
+                    <input type="number" v-model="deleteId" placeholder="Enter ID to Delete" class="bg-slate-950 border border-rose-900 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-rose-500" required>
+                    <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2 rounded-lg transition-colors">Delete Record</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <th class="p-5 font-semibold">ID</th>
+                            <th class="p-5 font-semibold">Customer Name</th>
+                            <th class="p-5 font-semibold">Email</th>
+                            <th class="p-5 font-semibold">Age</th>
+                            <th class="p-5 font-semibold">Investment</th>
+                            <th class="p-5 font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50">
+                        <tr v-if="isLoading">
+                            <td colspan="6" class="p-10 text-center text-slate-500">Connecting to API Gateway...</td>
+                        </tr>
+                        <tr v-for="user in customers" :key="user._id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                            <td class="p-5 font-mono text-sm text-cyan-400">{{ user.id || 'N/A' }}</td>
+                            <td class="p-5 text-slate-200">{{ user.name || user.fullName || 'N/A' }}</td>
+                            <td class="p-5 text-sm text-slate-400">{{ user.email || 'N/A' }}</td>
+                            <td class="p-5 font-mono text-sm text-slate-300">{{ user.age || 'N/A' }}</td>
+                            <td class="p-5 font-mono text-emerald-400">
+                                <span v-if="user.moneySpent !== undefined || user.totalSale !== undefined">
+                                    ${{ formatCurrency(user.moneySpent || user.totalSale || 0) }}
+                                </span>
+                                <span v-else class="text-rose-500">N/A</span>
+                            </td>
+                            <td class="p-5">
+                                <button @click="editCustomer(user)" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors">Edit</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="./js/app.js"></script>
+</body>
+</html>
+</file>
+
+<file path=".gitignore">
+node_modules/
+</file>
+
+<file path="LICENSE">
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+</file>
+
+<file path="README.md">
+# exam_u2_template
+Project practice for ESPE - AWD 30716 April - July 2026
+</file>
+
+</files>
+</file>
+
+<file path="repomix-output-DiverCesar-PythonRESTful.git.xml">
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+The content has been processed where security check has been disabled.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Security check has been disabled - content may contain sensitive information
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+routes/
+  appointments.py
+database.py
+LICENSE
+main.py
+models.py
+Procfile
+README.md
+requirements.txt
+seed_data.py
+validators.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="routes/appointments.py">
+from datetime import datetime
+from bson import ObjectId
+from fastapi import APIRouter, Query, HTTPException, status
+from fastapi.responses import JSONResponse
+from database import database
+from models import AppointmentRequest, AppointmentUpdateRequest, CancelRequest
+from validators import validate_date_format, validate_time_format, validate_min_anticipation
+
+router = APIRouter()
+
+def parse_mongo_document(document):
+    if not document:
+        return None
+    document["id"] = str(document.pop("_id"))
+    return document
+
+async def fetch_entity_by_id(collection_name: str, entity_id: str):
+    document = await database[collection_name].find_one({"_id": ObjectId(entity_id)})
+    return parse_mongo_document(document)
+
+@router.get("/available-schedules")
+async def fetch_available_schedules(
+    doctorId: str = Query(..., description="ID del doctor"),
+    date: str = Query(..., description="Fecha en formato YYYY-MM-DD")
+):
+    if not validate_date_format(date):
+        raise HTTPException(status_code=400, detail="El formato de fecha debe ser YYYY-MM-DD")
+
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d")
+        day_index = target_date.weekday()
+
+        # Buscar horarios del doctor
+        active_schedules = await database.work_schedules.find({
+            "doctorId": doctorId,
+            "dayOfWeek": day_index,
+            "active": True
+        }).to_list(length=None)
+
+        if not active_schedules:
+            return []
+
+        # Buscar citas ya ocupadas
+        existing_appointments = await database.appointments.find({
+            "doctorId": doctorId,
+            "date": date,
+            "status": {"$in": ["pending", "confirmed"]}
+        }).to_list(length=None)
+
+        booked_times = {appt.get("time") for appt in existing_appointments}
+        slots = []
+
+        for schedule in active_schedules:
+            start_hour, start_min = map(int, schedule["startTime"].split(":"))
+            end_hour, end_min = map(int, schedule["endTime"].split(":"))
+            
+            current_h, current_m = start_hour, start_min
+
+            while current_h < end_hour or (current_h == end_hour and current_m < end_min):
+                time_formatted = f"{current_h:02d}:{current_m:02d}"
+                is_free = time_formatted not in booked_times
+                
+                try:
+                    if is_free:
+                        validate_min_anticipation(date, time_formatted)
+                except ValueError:
+                    is_free = False
+
+                slots.append({
+                    "date": date,
+                    "time": time_formatted,
+                    "available": is_free,
+                    "doctorId": doctorId
+                })
+                
+                current_m += 30
+                if current_m >= 60:
+                    current_h += 1
+                    current_m = 0
+
+        return slots
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.get("/")
+async def list_appointments(
+    status: str = Query(None),
+    patientId: str = Query(None),
+    doctorId: str = Query(None)
+):
+    query_filters = {}
+    if status:
+        query_filters["status"] = status
+    if patientId:
+        query_filters["patientId"] = patientId
+    if doctorId:
+        query_filters["doctorId"] = doctorId
+
+    cursor = database.appointments.find(query_filters).sort([("date", -1)])
+    records = await cursor.to_list(length=None)
+    
+    response_data = []
+    for record in records:
+        parsed_record = parse_mongo_document(record)
+        parsed_record["patient"] = await fetch_entity_by_id("patients", parsed_record.get("patientId", ""))
+        parsed_record["doctor"] = await fetch_entity_by_id("doctors", parsed_record.get("doctorId", ""))
+        parsed_record["therapy"] = await fetch_entity_by_id("therapies", parsed_record.get("therapyId", ""))
+        response_data.append(parsed_record)
+
+    return response_data
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def schedule_appointment(payload: AppointmentRequest):
+    if not validate_date_format(payload.date) or not validate_time_format(payload.time):
+        raise HTTPException(status_code=400, detail="Formato de fecha u hora inválido")
+        
+    # Lógica simplificada para inserción de citas
+    appointment_data = payload.dict()
+    appointment_data["status"] = "pending"
+    appointment_data["createdAt"] = datetime.utcnow()
+    
+    result = await database.appointments.insert_one(appointment_data)
+    appointment_data["_id"] = result.inserted_id
+    
+    return parse_mongo_document(appointment_data)
+</file>
+
+<file path="database.py">
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("DB_NAME", "clinic_management")
+
+db_client = AsyncIOMotorClient(MONGO_URI)
+database = db_client[DB_NAME]
+</file>
+
+<file path="LICENSE">
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+</file>
+
+<file path="main.py">
+import os
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routes.appointments import router as appointments_router
+
+app = FastAPI(
+    title="Clinic Management System API",
+    description="RESTful API para la gestión de citas y terapias",
+    version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Aquí establecemos la ruta base que usted solicitó
+app.include_router(appointments_router, prefix="/api/appointments", tags=["Appointments"])
+
+@app.get("/")
+def api_root():
+    return {
+        "service": "Clinic Management API - Active",
+        "documentation": "/docs"
+    }
+
+@app.get("/health-check")
+def health_check():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    puerto = int(os.environ.get("PORT", 4000))
+    uvicorn.run("main:app", host="0.0.0.0", port=puerto, reload=True)
+</file>
+
+<file path="models.py">
+from datetime import date, datetime
+from typing import Optional
+from pydantic import BaseModel, Field
+
+
+class PatientInfo(BaseModel):
+    id: str
+    fullName: str
+    nationalId: str
+    email: str
+    phone: str
+    insuranceType: str
+
+
+class DoctorInfo(BaseModel):
+    id: str
+    fullName: str
+    specialty: str
+    licenseNumber: str
+    rating: float
+    email: str
+    phone: str
+
+
+class TherapyInfo(BaseModel):
+    id: str
+    name: str
+    description: str
+    specialty: str
+    duration: int
+    price: float
+
+
+class AppointmentResponse(BaseModel):
+    id: str
+    patientId: str
+    doctorId: str
+    therapyId: str
+    date: str
+    time: str
+    status: str
+    symptoms: str
+    hasExams: bool
+    exams: list
+    cancellationReason: Optional[str] = None
+    doctorNotes: Optional[str] = None
+    createdAt: datetime
+    updatedAt: datetime
+    patient: Optional[PatientInfo] = None
+    doctor: Optional[DoctorInfo] = None
+    therapy: Optional[TherapyInfo] = None
+
+
+class AppointmentRequest(BaseModel):
+    doctorId: str
+    therapyId: str
+    date: str
+    time: str
+    symptoms: str
+    hasExams: bool = False
+    exams: list = []
+
+
+class AppointmentUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    doctorNotes: Optional[str] = None
+
+
+class CancelRequest(BaseModel):
+    reason: str
+
+
+class AvailableSlot(BaseModel):
+    date: str
+    time: str
+    available: bool
+    doctorId: str
+
+
+class CreateAppointmentResponse(BaseModel):
+    message: str
+    appointment: dict
+</file>
+
+<file path="Procfile">
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+</file>
+
+<file path="README.md">
+# Clinic Management API
+RESTful API desarrollada en Python usando FastAPI y MongoDB para la gestión integral de un centro de rehabilitación clínica.
+
+## Tecnologías Utilizadas
+- Python 3.10+
+- FastAPI
+- MongoDB (Motor Asyncio)
+- Uvicorn
+
+## Instalación y Ejecución Local
+1. Clonar el repositorio.
+2. Instalar las dependencias: `pip install -r requirements.txt`
+3. Crear un archivo `.env` en la raíz con su `MONGO_URI`.
+4. Ejecutar el servidor: `uvicorn main:app --reload --port 4000`
+
+## Estructura de URIs
+El sistema respeta principios RESTful. Ejemplo de consulta de disponibilidad:
+`GET /api/appointments/available-schedules?doctorId={id}&date={YYYY-MM-DD}`
+</file>
+
+<file path="requirements.txt">
+fastapi
+uvicorn[standard]
+motor
+pymongo
+python-dotenv
+pydantic
+</file>
+
+<file path="seed_data.py">
+patients_data = [
+    {"fullName": "Carlos Rivera", "nationalId": "1234567890", "email": "carlos.rivera@email.com", "phone": "0999123456", "insuranceType": "Public"},
+    {"fullName": "Maria Torres", "nationalId": "1234567891", "email": "maria.torres@email.com", "phone": "0999123457", "insuranceType": "Private"},
+    {"fullName": "Juan Perez", "nationalId": "1234567892", "email": "juan.perez@email.com", "phone": "0999123458", "insuranceType": "Public"},
+    {"fullName": "Ana Gomez", "nationalId": "1234567893", "email": "ana.gomez@email.com", "phone": "0999123459", "insuranceType": "Private"},
+    {"fullName": "Luis Martinez", "nationalId": "1234567894", "email": "luis.martinez@email.com", "phone": "0999123460", "insuranceType": "Public"},
+    {"fullName": "Sofia Lopez", "nationalId": "1234567895", "email": "sofia.lopez@email.com", "phone": "0999123461", "insuranceType": "Private"},
+    {"fullName": "Diego Hernandez", "nationalId": "1234567896", "email": "diego.hernandez@email.com", "phone": "0999123462", "insuranceType": "Public"},
+    {"fullName": "Valentina Diaz", "nationalId": "1234567897", "email": "valentina.diaz@email.com", "phone": "0999123463", "insuranceType": "Private"},
+    {"fullName": "Andres Silva", "nationalId": "1234567898", "email": "andres.silva@email.com", "phone": "0999123464", "insuranceType": "Public"},
+    {"fullName": "Camila Castro", "nationalId": "1234567899", "email": "camila.castro@email.com", "phone": "0999123465", "insuranceType": "Private"},
+    {"fullName": "Miguel Angel Ruiz", "nationalId": "1234567900", "email": "miguel.ruiz@email.com", "phone": "0999123466", "insuranceType": "Public"},
+    {"fullName": "Laura Jimenez", "nationalId": "1234567901", "email": "laura.jimenez@email.com", "phone": "0999123467", "insuranceType": "Private"},
+    {"fullName": "Roberto Sanchez", "nationalId": "1234567902", "email": "roberto.sanchez@email.com", "phone": "0999123468", "insuranceType": "Public"},
+    {"fullName": "Daniela Morales", "nationalId": "1234567903", "email": "daniela.morales@email.com", "phone": "0999123469", "insuranceType": "Private"},
+    {"fullName": "Fernando Ortiz", "nationalId": "1234567904", "email": "fernando.ortiz@email.com", "phone": "0999123470", "insuranceType": "Public"},
+]
+
+doctors_data = [
+    {"fullName": "Dr. Ricardo Mendoza", "specialty": "Fisioterapia Deportiva", "licenseNumber": "FIS-001", "rating": 4.8, "email": "ricardo.mendoza@sersalud.com", "phone": "0999000111"},
+    {"fullName": "Dra. Patricia Vega", "specialty": "Fisioterapia Neurol\u00f3gica", "licenseNumber": "FIS-002", "rating": 4.9, "email": "patricia.vega@sersalud.com", "phone": "0999000222"},
+    {"fullName": "Dr. Alberto Campos", "specialty": "Fisioterapia Ortop\u00e9dica", "licenseNumber": "FIS-003", "rating": 4.7, "email": "alberto.campos@sersalud.com", "phone": "0999000333"},
+    {"fullName": "Dra. Sofia Rios", "specialty": "Fisioterapia Pedi\u00e1trica", "licenseNumber": "FIS-004", "rating": 4.6, "email": "sofia.rios@sersalud.com", "phone": "0999000444"},
+    {"fullName": "Dr. Manuel Flores", "specialty": "Fisioterapia Geri\u00e1trica", "licenseNumber": "FIS-005", "rating": 4.5, "email": "manuel.flores@sersalud.com", "phone": "0999000555"},
+]
+
+therapies_data = [
+    {"name": "Terapia Manual", "description": "T\u00e9cnicas manuales para aliviar dolor y mejorar movilidad", "specialty": "Fisioterapia General", "duration": 45, "price": 45.00},
+    {"name": "Electroterapia", "description": "Uso de corriente el\u00e9ctrica para estimulaci\u00f3n muscular", "specialty": "Fisioterapia General", "duration": 30, "price": 35.00},
+    {"name": "Ultrasonido Terap\u00e9utico", "description": "Ondas sonoras para tratar lesiones profundas", "specialty": "Fisioterapia General", "duration": 20, "price": 30.00},
+    {"name": "Rehabilitaci\u00f3n Deportiva", "description": "Programa especializado para recuperaci\u00f3n de atletas", "specialty": "Fisioterapia Deportiva", "duration": 60, "price": 60.00},
+    {"name": "Terapia Neurol\u00f3gica", "description": "Rehabilitaci\u00f3n para pacientes con trastornos neurol\u00f3gicos", "specialty": "Fisioterapia Neurol\u00f3gica", "duration": 50, "price": 55.00},
+    {"name": "Rehabilitaci\u00f3n Ortop\u00e9dica", "description": "Recuperaci\u00f3n post-operatoria y lesiones ortop\u00e9dicas", "specialty": "Fisioterapia Ortop\u00e9dica", "duration": 45, "price": 50.00},
+    {"name": "Fisioterapia Pedi\u00e1trica", "description": "Terapia especializada para ni\u00f1os", "specialty": "Fisioterapia Pedi\u00e1trica", "duration": 40, "price": 40.00},
+    {"name": "Fisioterapia Geri\u00e1trica", "description": "Cuidado fisioterap\u00e9utico para adultos mayores", "specialty": "Fisioterapia Geri\u00e1trica", "duration": 45, "price": 42.00},
+]
+
+symptoms_list = [
+    "Dolor lumbar cr\u00f3nico con irradiaci\u00f3n a pierna derecha, dificultad para estar sentado por m\u00e1s de 30 minutos",
+    "Esguince de tobillo grado II con inflamaci\u00f3n significativa y dificultad para apoyar el pie",
+    "Dolor cervical intenso con cefalea tensional, empeora con movimientos de rotaci\u00f3n",
+    "Hombro congelado con limitaci\u00f3n severa de la movilidad, no puede elevar el brazo m\u00e1s all\u00e1 de 90 grados",
+    "Lumbalgia aguda post-esfuerzo con espasmo muscular paravertebral bilateral",
+    "Contractura muscular en trapecio superior con puntos gatillo activos que irradian a cabeza",
+    "Fractura de mu\u00f1eca en etapa de rehabilitaci\u00f3n, necesita recuperar rango de movimiento completo",
+    "Dolor patelofemoral bilateral al subir escaleras y despu\u00e9s de estar sentado prolongadamente",
+    "Tendinitis aquiliana cr\u00f3nica con dolor matutino que mejora con actividad ligera",
+    "Rehabilitaci\u00f3n post-operatoria de rodilla derecha, necesita recuperar flexi\u00f3n completa",
+    "Dolor en hombro izquierdo con signos de pinzamiento subacromial al realizar movimientos por encima de la cabeza",
+    "Pie plano valgo bilateral con dolor en arco plantar despu\u00e9s de largas jornadas de pie",
+    "Cervicalgia cr\u00f3nica con v\u00e9rtigo ocasional y limitaci\u00f3n de la movilidad cervical",
+    "Epicondilitis lateral derecha (codo de tenista) con dolor al realizar movimientos de extensi\u00f3n de mu\u00f1eca",
+    "Dolor sacroil\u00edaco unilateral que empeora al estar sentado en superficies duras",
+    "Rehabilitaci\u00f3n neurol\u00f3gica post-ACV con hemiparesia izquierda y espasticidad",
+    "Dolor neurop\u00e1tico en miembro superior derecho secundario a hernia cervical C5-C6",
+    "S\u00edndrome del t\u00fanel carpiano bilateral con parestesias nocturnas y debilidad en la mano",
+    "Dolor en cadera derecha con signos de bursitis trocant\u00e9rica al caminar distancias largas",
+    "Escoliosis lumbar con descompensaci\u00f3n p\u00e9lvica y dolor cr\u00f3nico en regi\u00f3n lumbosacra",
+    "Fascitis plantar cr\u00f3nica con dolor intenso en los primeros pasos de la ma\u00f1ana",
+    "Rehabilitaci\u00f3n post-fractura de h\u00famero proximal con limitaci\u00f3n de la abducci\u00f3n del hombro",
+]
+</file>
+
+<file path="validators.py">
+import re
+from datetime import datetime, timedelta
+
+
+def validate_date_format(date_str: str) -> bool:
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        return False
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def validate_time_format(time_str: str) -> bool:
+    if not re.match(r"^\d{2}:\d{2}$", time_str):
+        return False
+    try:
+        datetime.strptime(time_str, "%H:%M")
+        return True
+    except ValueError:
+        return False
+
+
+def validate_min_anticipation(date_str: str, time_str: str):
+    appointment_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    now = datetime.now()
+    min_hours = 24
+    if appointment_dt - now < timedelta(hours=min_hours):
+        raise ValueError(f"Appointments must be scheduled at least {min_hours} hours in advance")
+
+
+def validate_cancellation_lead_time(date_str: str, time_str: str):
+    appointment_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    now = datetime.now()
+    min_hours = 2
+    if appointment_dt - now < timedelta(hours=min_hours):
+        raise ValueError(f"Cancellations must be made at least {min_hours} hours before the appointment")
+</file>
+
+</files>
+</file>
+
+<file path="requirements.txt">
+flask==3.0.0
+flask-cors==4.0.0
+pymongo==4.6.1
+python-dotenv==1.0.0
+</file>
+
+</files>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ser-Salud | Clinic Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: { 'fade-in': 'fadeIn 0.5s ease-out', 'slide-down': 'slideDown 0.3s ease-out' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans min-h-screen">
+{% raw %}
+    <div id="app" v-cloak>
+        <nav class="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <router-link to="/home" class="flex items-center gap-3 shrink-0">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.7 50.7 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.8 50.8 0 0 1 12 13.87a50.8 50.8 0 0 1 7.74-3.723M4.26 10.147a59.904 59.904 0 0 0 1.918 8.365M20.82 10.147a59.904 59.904 0 0 1-1.918 8.365" />
+                            </svg>
+                        </div>
+                        <span class="text-lg font-bold text-white tracking-tight">Ser-Salud</span>
+                    </router-link>
+
+                    <div class="hidden md:flex items-center gap-1">
+                        <router-link to="/home" class="nav-link" active-class="nav-link-active">Home</router-link>
+                        <div class="relative group">
+                            <router-link to="/patients" class="nav-link" active-class="nav-link-active">
+                                Patients
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/patients" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Patient List</router-link>
+                                <router-link to="/patient/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Patient</router-link>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <router-link to="/doctors" class="nav-link" active-class="nav-link-active">
+                                Doctors
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/doctors" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Doctor List</router-link>
+                                <router-link to="/doctor/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Doctor</router-link>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <router-link to="/appointments" class="nav-link" active-class="nav-link-active">
+                                Appointments
+                                <svg class="w-3 h-3 ml-1 inline-block group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </router-link>
+                            <div class="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 z-50">
+                                <router-link to="/appointments" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">Appointment List</router-link>
+                                <router-link to="/appointment/create" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">+ New Appointment</router-link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                        <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path v-if="!mobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="mobileOpen" class="md:hidden border-t border-slate-800 bg-slate-900 animate-slide-down">
+                <div class="px-4 py-3 space-y-1">
+                    <router-link @click="mobileOpen = false" to="/home" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400" exact-active-class="bg-slate-800 text-emerald-400">Home</router-link>
+                    <router-link @click="mobileOpen = false" to="/patients" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Patient List</router-link>
+                    <router-link @click="mobileOpen = false" to="/patient/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Patient</router-link>
+                    <router-link @click="mobileOpen = false" to="/doctors" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Doctor List</router-link>
+                    <router-link @click="mobileOpen = false" to="/doctor/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Doctor</router-link>
+                    <router-link @click="mobileOpen = false" to="/appointments" class="block px-4 py-2.5 rounded-lg text-sm font-medium" active-class="bg-slate-800 text-emerald-400">Appointment List</router-link>
+                    <router-link @click="mobileOpen = false" to="/appointment/create" class="block px-4 py-2.5 pl-8 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">+ New Appointment</router-link>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+            <router-view />
+        </main>
+
+        <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-6">
+            <div class="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+                <p>Ser-Salud Clinic Management</p>
+                <p>Powered by <span class="text-sky-400">MongoDB Atlas</span> &bull; Deployed on <span class="text-sky-400">Railway</span></p>
+            </div>
+        </footer>
+    </div>
+
+    <template id="dashboard-template">
+        <div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <router-link to="/patients" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.patients }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Patients</h3>
+                </router-link>
+                <router-link to="/doctors" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.doctors }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Doctors</h3>
+                </router-link>
+                <router-link to="/appointments" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all duration-300 group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/></svg>
+                        </div>
+                        <span class="text-3xl font-bold text-white">{{ stats.appointments }}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Total Appointments</h3>
+                </router-link>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-4">Quick Actions</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <router-link to="/patient/create" class="flex items-center justify-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-xl px-6 py-4 text-emerald-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Register Patient
+                    </router-link>
+                    <router-link to="/doctor/create" class="flex items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-xl px-6 py-4 text-blue-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Add Doctor
+                    </router-link>
+                    <router-link to="/appointment/create" class="flex items-center justify-center gap-2 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-600/30 rounded-xl px-6 py-4 text-amber-400 font-semibold transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Schedule Appointment
+                    </router-link>
+                </div>
+            </div>
+
+            <div v-if="recentAppointments.length" class="mt-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-4">Recent Appointments</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <th class="pb-3 font-semibold">Patient</th><th class="pb-3 font-semibold">Date</th><th class="pb-3 font-semibold">Time</th><th class="pb-3 font-semibold">Status</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-for="a in recentAppointments" :key="a.id" class="text-sm">
+                                <td class="py-3 text-slate-200">#{{ a.patientId }}</td>
+                                <td class="py-3 text-slate-400">{{ a.date }}</td>
+                                <td class="py-3 text-slate-400">{{ a.time }}</td>
+                                <td class="py-3"><span :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="patients-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Patients</h1>
+                <router-link to="/patient/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Patient
+                </router-link>
+            </div>
+
+            <div v-if="editForm.id" class="mb-6 bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-lg">
+                <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4">Editing Patient #{{ editForm.id }}</h3>
+                <form @submit.prevent="updatePatient" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <input type="text" v-model="editForm.fullName" placeholder="Full Name" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    <input type="email" v-model="editForm.email" placeholder="Email" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="text" v-model="editForm.phone" placeholder="Phone" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="number" v-model="editForm.age" placeholder="Age" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <input type="text" v-model="editForm.diagnosis" placeholder="Diagnosis" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <select v-model="editForm.insuranceType" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="" disabled>Insurance</option>
+                        <option value="Public">Public</option>
+                        <option value="Private">Private</option>
+                        <option value="None">None</option>
+                    </select>
+                    <div class="col-span-full flex gap-3 pt-2">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm">Save Changes</button>
+                        <button type="button" @click="cancelEdit" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors text-sm">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Full Name</th>
+                                <th class="p-5 font-semibold">Email</th>
+                                <th class="p-5 font-semibold">Age</th>
+                                <th class="p-5 font-semibold">Diagnosis</th>
+                                <th class="p-5 font-semibold">Insurance</th>
+                                <th class="p-5 font-semibold">Status</th>
+                                <th class="p-5 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="8" class="p-10 text-center text-slate-500">Loading patients...</td></tr>
+                            <tr v-for="p in patientsList" :key="p._id || p.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ p.id }}</td>
+                                <td class="p-5 text-slate-200 font-medium">{{ p.fullName }}</td>
+                                <td class="p-5 text-sm text-slate-400">{{ p.email || 'N/A' }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">{{ p.age || 'N/A' }}</td>
+                                <td class="p-5 text-sm text-slate-400 max-w-xs truncate">{{ p.diagnosis || 'N/A' }}</td>
+                                <td class="p-5 text-sm"><span :class="insuranceBadge(p.insuranceType)">{{ p.insuranceType || 'N/A' }}</span></td>
+                                <td class="p-5"><span :class="p.isActive ? 'text-emerald-400' : 'text-rose-400'" class="text-xs font-semibold">{{ p.isActive ? 'Active' : 'Inactive' }}</span></td>
+                                <td class="p-5">
+                                    <div class="flex gap-2">
+                                        <button @click="startEdit(p)" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition-colors">Edit</button>
+                                        <button @click="removePatient(p.id)" class="text-xs bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="patient-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/patients" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Patient</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createPatient" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                        <input type="text" v-model="form.fullName" placeholder="e.g. Juan Perez" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                        <input type="email" v-model="form.email" placeholder="patient@email.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Phone</label>
+                        <input type="text" v-model="form.phone" placeholder="555-0100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Age</label>
+                        <input type="number" v-model="form.age" placeholder="30" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Insurance</label>
+                        <select v-model="form.insuranceType" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="" disabled>Select type</option>
+                            <option value="Public">Public</option>
+                            <option value="Private">Private</option>
+                            <option value="None">None</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Diagnosis</label>
+                        <input type="text" v-model="form.diagnosis" placeholder="Initial diagnosis" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Save Patient</button>
+                        <router-link to="/patients" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <template id="doctors-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Doctors</h1>
+                <router-link to="/doctor/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Doctor
+                </router-link>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Name</th>
+                                <th class="p-5 font-semibold">Specialty</th>
+                                <th class="p-5 font-semibold">License</th>
+                                <th class="p-5 font-semibold">Rating</th>
+                                <th class="p-5 font-semibold">Contact</th>
+                                <th class="p-5 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="7" class="p-10 text-center text-slate-500">Loading doctors...</td></tr>
+                            <tr v-for="d in doctorsList" :key="d._id || d.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ d.id }}</td>
+                                <td class="p-5 text-slate-200 font-medium">{{ d.fullName }}</td>
+                                <td class="p-5 text-sm text-slate-400">{{ d.specialty }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">{{ d.licenseNumber || 'N/A' }}</td>
+                                <td class="p-5"><span class="text-amber-400 font-semibold">{{ d.rating || 'N/A' }}</span></td>
+                                <td class="p-5 text-sm text-slate-400">{{ d.email || d.phone || 'N/A' }}</td>
+                                <td class="p-5"><span :class="d.isActive ? 'text-emerald-400' : 'text-rose-400'" class="text-xs font-semibold">{{ d.isActive ? 'Active' : 'Inactive' }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="doctor-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/doctors" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Doctor</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createDoctor" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                        <input type="text" v-model="form.fullName" placeholder="e.g. Dr. Ricardo Mendoza" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Specialty</label>
+                        <input type="text" v-model="form.specialty" placeholder="e.g. Traumatology" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">License Number</label>
+                        <input type="text" v-model="form.licenseNumber" placeholder="LIC-001" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Rating (0-5)</label>
+                        <input type="number" step="0.1" v-model="form.rating" placeholder="4.5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                        <input type="email" v-model="form.email" placeholder="doctor@clinica.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Phone</label>
+                        <input type="text" v-model="form.phone" placeholder="555-1000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Save Doctor</button>
+                        <router-link to="/doctors" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <template id="appointments-list-template">
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-2xl font-bold text-white">Appointments</h1>
+                <router-link to="/appointment/create" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Appointment
+                </router-link>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <th class="p-5 font-semibold">ID</th>
+                                <th class="p-5 font-semibold">Patient</th>
+                                <th class="p-5 font-semibold">Doctor</th>
+                                <th class="p-5 font-semibold">Date</th>
+                                <th class="p-5 font-semibold">Time</th>
+                                <th class="p-5 font-semibold">Status</th>
+                                <th class="p-5 font-semibold">Symptoms</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-if="isLoading"><td colspan="7" class="p-10 text-center text-slate-500">Loading appointments...</td></tr>
+                            <tr v-for="a in appointmentsList" :key="a._id || a.id" class="group transition-all duration-300 hover:bg-slate-800/50">
+                                <td class="p-5 font-mono text-sm text-emerald-400">{{ a.id }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">#{{ a.patientId }}</td>
+                                <td class="p-5 font-mono text-sm text-slate-300">#{{ a.doctorId }}</td>
+                                <td class="p-5 text-sm text-slate-200">{{ a.date }}</td>
+                                <td class="p-5 text-sm text-slate-200">{{ a.time }}</td>
+                                <td class="p-5"><span :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                                <td class="p-5 text-sm text-slate-400 max-w-xs truncate">{{ a.symptoms || 'N/A' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="appointment-create-template">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <router-link to="/appointments" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </router-link>
+                <h1 class="text-2xl font-bold text-white">New Appointment</h1>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <form @submit.prevent="createAppointment" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Patient ID</label>
+                        <input type="number" v-model="form.patientId" placeholder="e.g. 1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Doctor ID</label>
+                        <input type="number" v-model="form.doctorId" placeholder="e.g. 1" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Date (DD/MM/YYYY)</label>
+                        <input type="text" v-model="form.date" placeholder="15/07/2026" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Time (HH:MM)</label>
+                        <input type="text" v-model="form.time" placeholder="14:00" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+                        <select v-model="form.status" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Therapy ID</label>
+                        <input type="number" v-model="form.therapyId" placeholder="Optional" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Symptoms</label>
+                        <input type="text" v-model="form.symptoms" placeholder="Describe symptoms" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Schedule Appointment</button>
+                        <router-link to="/appointments" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-center">Cancel</router-link>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <script src="/static/js/app.js"></script>
+{% endraw %}
+</body>
+</html>
